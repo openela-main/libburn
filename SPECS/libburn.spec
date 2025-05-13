@@ -3,7 +3,7 @@
 Summary:         Library for reading, mastering and writing optical discs
 Name:            libburn
 Version:         1.5.4
-Release:         4%{?dist}
+Release:         5%{?dist}
 License:         GPLv2+
 URL:             https://libburnia-project.org/
 Source0:         https://files.libburnia-project.org/releases/%{pkgname}-%{version}.tar.gz
@@ -51,6 +51,7 @@ for developing applications that use %{name}.
 %package -n      cdrskin%{?variant}
 Summary:         Limited cdrecord compatibility wrapper to ease migration to %{name}
 Requires:        %{name}%{?_isa} = %{version}-%{release}
+Requires(pre):   %{_sbindir}/alternatives, coreutils
 Requires(post):  %{_sbindir}/alternatives, coreutils
 Requires(preun): %{_sbindir}/alternatives
 Provides: cdrecord
@@ -106,6 +107,16 @@ touch $RPM_BUILD_ROOT{%{_bindir}/wodim,%{_mandir}/man1/wodim.1.gz}
 
 %ldconfig_scriptlets
 
+%pre -n cdrskin%{?variant}
+# remove alternativized files if they are not symlinks
+# otherwise upgrades from non-alternativized versions do not work
+# the list of files should be kept in sync with the "alternatives"
+# commands in %%post
+for f in cdrecord wodim ; do
+    [ -L %{_bindir}/$f ] || %{__rm} -f %{_bindir}/$f || :
+    [ -L %{_mandir}/man1/$f.1.gz ] || %{__rm} -f %{_mandir}/man1/$f.1.gz || :
+done
+
 %post -n cdrskin%{?variant}
 %{_sbindir}/alternatives --install %{_bindir}/cdrecord cdrecord %{_bindir}/cdrskin%{?variant} 60 \
   --slave %{_mandir}/man1/cdrecord.1.gz cdrecord-cdrecordman %{_mandir}/man1/cdrskin%{?variant}.1.gz \
@@ -141,6 +152,9 @@ fi
 %{_mandir}/man1/cdrskin%{?variant}.1*
 
 %changelog
+* Wed Jan 15 2025 Pavel Cahyna <pcahyna@redhat.com> - 1.5.4-5
+- Fix upgrades from non-alternativized versions/packages
+
 * Tue Feb 08 2022 Jiri Kucera <jkucera@redhat.com> - 1.5.4-4
 - Fix cdrecord & wodim alternatives
   Related: #2015861
